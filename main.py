@@ -27,13 +27,13 @@ def show_copyright():
     print(Fore.MAGENTA + Style.BRIGHT + banner + Style.RESET_ALL)
     
 
-PING_INTERVAL = 180
+PING_INTERVAL = 60
 RETRIES = 120
 TOKEN_FILE = 'np_tokens.txt'
 
 DOMAIN_API = {
     "SESSION": "http://18.136.143.169/api/auth/session",
-    "PING": "http://54.255.192.166/api/network/ping"
+    "PING": "https://nw.nodepay.org/api/network/ping"  # PING接口地址改变
 }
 
 CONNECTION_STATES = {
