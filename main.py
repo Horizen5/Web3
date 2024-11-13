@@ -77,10 +77,11 @@ async def render_profile_info(proxy, token):
                 handle_logout(proxy)
                 return
         
-        await start_ping(proxy, token)
+        if proxy_auth_status[proxy]:
+            await start_ping(proxy, token)
 
     except Exception as e:
-        pass
+        logger.error(f"Error in render_profile_info for proxy {proxy}: {e}")
 
 async def call_api(url, data, proxy, token, max_retries=3):
     headers = {
@@ -142,13 +143,14 @@ async def ping(proxy, token):
             "timestamp": int(time.time()),
             "version": '2.2.7'
         }
-
+        logger.warning(f"Starting ping task for proxy {proxy} Data: {data}")
         response = await call_api(DOMAIN_API["PING"], data, proxy, token)
         if response["code"] == 0:
-            logger.info(f"{Fore.GREEN}Ping successful via proxy {proxy}: {response}")
+            logger.info(f"{Fore.CYAN}Ping successful via proxy {proxy}: {response}")
             RETRIES = 0
             status_connect = CONNECTION_STATES["CONNECTED"]
         else:
+            logger.error(f"{Fore.RED}Ping Failed via proxy {proxy}: {response}")
             handle_ping_fail(proxy, response)
     except Exception as e:
         
@@ -172,7 +174,7 @@ def handle_logout(proxy):
     account_info = {}
     save_status(proxy, None)
     logger.info(f"{Fore.YELLOW}Logged out and cleared session info for proxy {proxy}")
-
+    
 def load_proxies(proxy_file):
     try:
         with open(proxy_file, 'r') as file:
