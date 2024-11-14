@@ -1,11 +1,3 @@
-# Nodepay.ai
-![Nodepay.ai](image.png)
-Nodepay.ai Bot auto ping using multyple proxy
-
-Register to Nodepay.ai : [https://app.nodepay.ai/register](https://app.nodepay.ai/register?ref=Od15EPpf6UBd5qR)
-
-# Features
-This script is intended for running on a server using multyple proxy.
 
 ## Update 
 - each account only can connect 10 proxy
@@ -37,13 +29,4 @@ pip install -r requirements.txt
 ## 3. Run The Script
 ```bash
 python3 main.py
-```
-## Expected Output
-If running correctly, you will see logs like the following:
-```bash
-2024-07-30 04:37:18.263 | Ping successful: {'success': True, 'code': 0, 'msg': 'Success', 'data': {'ip_score': 88}}
-2024-07-30 04:37:48.621 | Ping successful: {'success': True, 'code': 0, 'msg': 'Success', 'data': {'ip_score': 90}}
-2024-07-30 04:38:18.968 | Ping successful: {'success': True, 'code': 0, 'msg': 'Success', 'data': {'ip_score': 94}}
-2024-07-30 04:38:59.338 | Ping successful: {'success': True, 'code': 0, 'msg': 'Success', 'data': {'ip_score': 98}}
-
 ```
