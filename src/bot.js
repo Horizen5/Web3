@@ -9,14 +9,13 @@ class Bot {
     this.proxyCheck = new ProxyChecker(config, logger);
   }
 
-  // 连接到会话
   async connect(token, proxy = null) {
     try {
       const userAgent = 'Mozilla/5.0 ... Safari/537.3';
       const accountInfo = await this.getSession(token, userAgent, proxy);
 
       console.log(
-        `✅ ${'已连接到会话'.green} 用户ID: ${accountInfo.uid}`
+        `✅ ${'已连接到会话'.green} UID: ${accountInfo.uid}`
       );
       this.logger.info('会话信息', {
         uid: accountInfo.uid,
@@ -30,19 +29,23 @@ class Bot {
         try {
           await this.sendPing(accountInfo, token, userAgent, proxy);
         } catch (error) {
-          console.log(`❌ ${'Ping 错误'.red}: ${error.message}`);
-          this.logger.error('Ping 错误', { error: error.message });
+          console.log(`❌ ${'心跳包错误'.red}: ${error.message}`);
+          this.logger.error('心跳包错误', { error: error.message });
         }
       }, this.config.retryInterval);
 
-      process.on('SIGINT', () => clearInterval(interval));
+      if (!process.listenerCount('SIGINT')) {
+        process.once('SIGINT', () => {
+          clearInterval(interval);
+          console.log('\n👋 正在关闭...');
+        });
+      }
     } catch (error) {
       console.log(`❌ ${'连接错误'.red}: ${error.message}`);
       this.logger.error('连接错误', { error: error.message, proxy });
     }
   }
 
-  // 获取会话信息
   async getSession(token, userAgent, proxy) {
     try {
       const config = {
@@ -65,10 +68,9 @@ class Bot {
     }
   }
 
-  // 发送 Ping 请求
   async sendPing(accountInfo, token, userAgent, proxy) {
     const uid = accountInfo.uid || crypto.randomBytes(8).toString('hex');
-    const browserId =
+    const browserId = 
       accountInfo.browser_id || crypto.randomBytes(8).toString('hex');
 
     const pingData = {
@@ -93,18 +95,17 @@ class Bot {
       }
 
       await axios.post(this.config.pingURL, pingData, config);
-      console.log(`📡 ${'Ping 已发送'.cyan} 用户ID: ${uid}`);
-      this.logger.info('Ping 已发送', {
+      console.log(`📡 ${'心跳包已发送'.cyan} UID: ${uid}`);
+      this.logger.info('心跳包已发送', {
         uid,
         browserId,
-        ip: proxy ? proxy.host : '直接连接',
+        ip: proxy ? proxy.host : '直连',
       });
     } catch (error) {
-      throw new Error('Ping 请求失败');
+      throw new Error('心跳包请求失败');
     }
   }
 
-  // 构建代理配置
   buildProxyConfig(proxy) {
     return proxy && proxy.host
       ? {
