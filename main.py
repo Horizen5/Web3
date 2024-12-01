@@ -26,7 +26,8 @@ VERSION = "2.2.7"
 
 DOMAIN_API = {
     "SESSION": "http://api.nodepay.ai/api/auth/session",
-    "PING": "https://nw.nodepay.org/api/network/ping"
+    "PING": "https://nw.nodepay.org/api/network/ping",
+    "LOGIN": "http://api.nodepay.ai/api/auth/login"
 }
 
 class NodePayBot:
@@ -55,6 +56,7 @@ class NodePayBot:
         print(f"\n请选择一个选项:")
         print(f"{Fore.GREEN}1. 启动节点{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}2. 注册账户{Style.RESET_ALL}")
+        print(f"{Fore.BLUE}3. 登录账户获取Token{Style.RESET_ALL}")
         return input(f"{Fore.CYAN}输入选项编号: {Style.RESET_ALL}")
 
     def load_files(self):
@@ -81,7 +83,7 @@ class NodePayBot:
     async def call_api(self, url: str, data: dict, proxy: str, token: str) -> dict:
         user_agent = UserAgent(os=['windows', 'macos', 'linux'], browsers=['chrome']).random
         headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {token}" if token else "",
             "User-Agent": user_agent,
             "Content-Type": "application/json",
             "Origin": "chrome-extension://lgmpfmgeabnnlemejacfljbmonaomfmm",
@@ -175,6 +177,37 @@ class NodePayBot:
                 await asyncio.gather(*tasks)
             await asyncio.sleep(10)
 
+    async def login_account(self):
+        if not self.active_proxies:
+            logger.error("没有可用的代理来进行登录尝试。")
+            return
+
+        proxy = self.active_proxies[0]  # 使用第一个代理进行登录尝试
+        
+        # 获取用户输入的登录信息
+        email = input("请输入您的电子邮件: ")
+        password = input("请输入您的密码: ")
+        
+        try:
+            data = {
+                "email": email,
+                "password": password,
+                "browser_id": self.browser_id
+            }
+            response = await self.call_api(DOMAIN_API["LOGIN"], data, proxy, "")
+            if response.get("code") == 0:
+                token = response["data"].get("token")
+                if token:
+                    with open('tokenz.txt', 'a') as file:
+                        file.write(f"{token}\n")
+                    logger.info(f"登录成功，Token已保存到tokenz.txt")
+                else:
+                    logger.warning("登录成功，但未获取到Token")
+            else:
+                logger.error(f"登录失败 - {response.get('message')}")
+        except Exception as e:
+            logger.error(f"登录时发生错误 - {e}")
+
     async def main(self):
         self.clear_screen()
         self.show_warning()
@@ -188,8 +221,10 @@ class NodePayBot:
                 await self.start_nodes()
             elif choice == "2":
                 print(f"{Fore.YELLOW}注册账户功能尚未实现{Style.RESET_ALL}")
+            elif choice == "3":
+                await self.login_account()
             else:
-                print(f"{Fore.RED}无效的选项，请选择1或2{Style.RESET_ALL}")
+                print(f"{Fore.RED}无效的选项，请选择1、2或3{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     bot = NodePayBot()
