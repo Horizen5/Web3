@@ -3,16 +3,19 @@ import aiohttp
 import time
 import uuid
 import sys
-import os  # Import os for clearing the screen
+import os
 
 from curl_cffi import requests
 from loguru import logger
-from colorama import Fore
+from colorama import Fore, Style, init
 from fake_useragent import UserAgent
+
+# 初始化colorama以支持Windows系统
+init(autoreset=True)
 
 # 配置logger，只显示INFO级别以上的日志
 logger.remove()
-logger.add(sys.stderr, format="{time} {level} - {message}", level="INFO")
+logger.add(sys.stderr, format="{time} {level} - {message}", level="INFO", colorize=True)
 
 def clear_screen():
     # Clear the screen based on the operating system
@@ -24,24 +27,23 @@ def clear_screen():
         print("\n" * 100)  # Fallback: Print 100 new lines
 
 def show_warning():
-    confirm = input("多账户NODEPAY机器人 \n\n请确保您有:\n1. 包含您Nodepay令牌的token.txt文件（每行一个）\n2. 包含您的代理列表的proxy.txt文件\n注意：每个令牌最多将获得3个代理\n\n按Enter键继续或按Ctrl+C取消... ")
+    confirm = input(f"{Fore.YELLOW}多账户NODEPAY机器人 \n\n请确保您有:\n1. 包含您Nodepay令牌的token.txt文件（每行一个）\n2. 包含您的代理列表的proxy.txt文件\n注意：每个令牌最多将获得3个代理\n\n按Enter键继续或按Ctrl+C取消... {Style.RESET_ALL}")
 
     if confirm.strip() == "":
-        print("继续...")
+        print(f"{Fore.GREEN}继续...{Style.RESET_ALL}")
     else:
-        print("退出...")
+        print(f"{Fore.RED}退出...{Style.RESET_ALL}")
         exit()
 
 def display_menu():
-    print("\n请选择一个选项:")
-    print("1. 启动节点")
-    print("2. 注册账户")
-    choice = input("输入选项编号: ")
+    print(f"\n请选择一个选项:")
+    print(f"{Fore.GREEN}1. 启动节点{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}2. 注册账户{Style.RESET_ALL}")
+    choice = input(f"{Fore.CYAN}输入选项编号: {Style.RESET_ALL}")
     return choice
 
 def register_accounts():
-    # 注册账户的占位符逻辑
-    print("注册账户功能尚未实现。")
+    print(f"{Fore.MAGENTA}注册账户功能尚未实现。{Style.RESET_ALL}")
 
 # 常量
 PING_INTERVAL = 60
@@ -152,11 +154,11 @@ async def ping(proxy, token):
             # 将IP分数翻译成中文
             ip_score = response["data"].get("ip_score", "未知")
             if isinstance(ip_score, (int, float)):
-                ip_score_chinese = f"IP分数: {ip_score}"
+                ip_score_chinese = f"{Fore.GREEN}IP分数: {ip_score}{Style.RESET_ALL}"
             else:
-                ip_score_chinese = f"IP分数: {ip_score}（非数值）"
+                ip_score_chinese = f"{Fore.YELLOW}IP分数: {ip_score}（非数值）{Style.RESET_ALL}"
             
-            logger.info(f"Ping成功，代理 {proxy}，{ip_score_chinese}")
+            logger.info(f"{Fore.CYAN}Ping成功，代理 {proxy}，{ip_score_chinese}{Style.RESET_ALL}")
             RETRIES = 0
             status_connect = CONNECTION_STATES["已连接"]
     except Exception as e:
@@ -178,7 +180,7 @@ def load_proxies(proxy_file):
         return proxies
     except Exception as e:
         # No error logging here
-        raise SystemExit("由于加载代理失败，程序退出")
+        raise SystemExit(f"{Fore.RED}由于加载代理失败，程序退出。{Style.RESET_ALL}")
 
 def load_tokens(token_file):
     try:
@@ -187,7 +189,7 @@ def load_tokens(token_file):
         return tokens
     except Exception as e:
         # No error logging here
-        raise SystemExit("由于加载令牌失败，程序退出")
+        raise SystemExit(f"{Fore.RED}由于加载令牌失败，程序退出。{Style.RESET_ALL}")
 
 def save_status(proxy, status):
     pass
@@ -214,14 +216,14 @@ async def main():
     all_tokens = load_tokens('token.txt')  # 从令牌列表中加载令牌
 
     if not all_tokens:
-        print("在token.txt中未找到令牌。程序退出。")
+        print(f"{Fore.RED}在token.txt中未找到令牌。程序退出。{Style.RESET_ALL}")
         exit()
 
     while True:
         choice = display_menu()
         
         if choice == "1":
-            print("启动节点...")
+            print(f"{Fore.GREEN}启动节点...{Style.RESET_ALL}")
             while True:
                 for token in all_tokens:
                     active_proxies = [
@@ -252,11 +254,11 @@ async def main():
         elif choice == "2":
             register_accounts()
         else:
-            print("无效的选项。请选择1或2。")
+            print(f"{Fore.RED}无效的选项。请选择1或2。{Style.RESET_ALL}")
 
 if __name__ == '__main__':
     show_warning()
-    print("\n现在运行...")
+    print(f"\n{Fore.GREEN}现在运行...{Style.RESET_ALL}")
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
