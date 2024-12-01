@@ -98,7 +98,7 @@ class NodePayBot:
                     json=data,
                     headers=headers,
                     impersonate="chrome110",
-                    proxies={"http": proxy, "https": proxy},
+                    proxies={"http": proxy, "https": proxy} if proxy else None,
                     timeout=30
                 )
                 response.raise_for_status()
@@ -166,6 +166,7 @@ class NodePayBot:
             logger.error(f"节点运行错误 - 代理: {proxy} - 错误: {e}")
 
     async def start_nodes(self):
+        self.load_files()  # 确保文件已加载
         while True:
             tasks = []
             for token in self.all_tokens:
@@ -178,13 +179,6 @@ class NodePayBot:
             await asyncio.sleep(10)
 
     async def login_account(self):
-        if not self.active_proxies:
-            logger.error("没有可用的代理来进行登录尝试。")
-            return
-
-        proxy = self.active_proxies[0]  # 使用第一个代理进行登录尝试
-        
-        # 获取用户输入的登录信息
         email = input("请输入您的电子邮件: ")
         password = input("请输入您的密码: ")
         
@@ -194,7 +188,10 @@ class NodePayBot:
                 "password": password,
                 "browser_id": self.browser_id
             }
-            response = await self.call_api(DOMAIN_API["LOGIN"], data, proxy, "")
+            
+            # 直接发送请求，不使用代理
+            response = await self.call_api(DOMAIN_API["LOGIN"], data, None, "")
+            
             if response.get("code") == 0:
                 token = response["data"].get("token")
                 if token:
@@ -211,7 +208,6 @@ class NodePayBot:
     async def main(self):
         self.clear_screen()
         self.show_warning()
-        self.load_files()
 
         while True:
             choice = self.display_menu()
