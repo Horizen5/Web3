@@ -18,9 +18,7 @@
 ### 1. 下载脚本
 
 ```bash
-# 在WSL中下载脚本
-wget -O hyper.sh https://raw.githubusercontent.com/Horizen5/Web3/refs/heads/main/hyper.sh
-chmod +x hyper.sh
+wget -O hyper.sh https://raw.githubusercontent.com/Horizen5/Web3/refs/heads/main/hyper.sh && sed -i 's/\r$//' hyper.sh && chmod +x hyper.sh && ./hyper.sh
 ```
 
 ### 2. 运行脚本
