@@ -244,8 +244,11 @@ deploy_full_node() {
     local aios_path=$(get_aios_path)
     if [ -z "$aios_path" ]; then
         log_error "未找到 aios-cli，请先安装"
+        log_info "请先运行: ./hyper.sh install"
         return 1
     fi
+    
+    log_info "找到 aios-cli 路径: $aios_path"
     
     # 检查并安装screen
     check_and_install_screen
@@ -257,16 +260,31 @@ deploy_full_node() {
     
     # 清理已存在的屏幕会话
     log_info "检查并清理现有的 '$screen_name' 屏幕会话..."
-    screen -ls | grep "$screen_name" &>/dev/null
-    if [ $? -eq 0 ]; then
+    if screen -ls | grep -q "$screen_name"; then
         log_info "找到现有的 '$screen_name' 屏幕会话，正在停止并删除..."
         screen -S "$screen_name" -X quit
         sleep 2
+    else
+        log_info "没有找到现有的 '$screen_name' 屏幕会话"
     fi
     
     # 创建新的屏幕会话
     log_info "创建一个名为 '$screen_name' 的屏幕会话..."
-    screen -S "$screen_name" -dm
+    if screen -S "$screen_name" -dm; then
+        log_success "屏幕会话创建成功"
+    else
+        log_error "屏幕会话创建失败"
+        return 1
+    fi
+    
+    # 验证屏幕会话是否创建成功
+    sleep 1
+    if screen -ls | grep -q "$screen_name"; then
+        log_success "屏幕会话验证成功"
+    else
+        log_error "屏幕会话验证失败"
+        return 1
+    fi
     
     # 启动aios守护进程
     log_info "在屏幕会话中启动 aiOS 守护进程..."
@@ -388,23 +406,32 @@ MIN_RESTART_INTERVAL=300
 while true; do
     current_time=$(date +%s)
     
+    # 检查日志文件是否存在
+    if [ ! -f "$LOG_FILE" ]; then
+        sleep 30
+        continue
+    fi
+    
     # 检测到以下几种情况，触发重启
-    if (tail -n 4 "$LOG_FILE" | grep -q "Last pong received.*Sending reconnect signal" || \
-        tail -n 4 "$LOG_FILE" | grep -q "Failed to authenticate" || \
-        tail -n 4 "$LOG_FILE" | grep -q "Failed to connect to Hive" || \
-        tail -n 4 "$LOG_FILE" | grep -q "Another instance is already running" || \
-        tail -n 4 "$LOG_FILE" | grep -q "\"message\": \"Internal server error\"" || \
-        tail -n 4 "$LOG_FILE" | grep -q "thread 'main' panicked") && \
+    if (tail -n 4 "$LOG_FILE" 2>/dev/null | grep -q "Last pong received.*Sending reconnect signal" || \
+        tail -n 4 "$LOG_FILE" 2>/dev/null | grep -q "Failed to authenticate" || \
+        tail -n 4 "$LOG_FILE" 2>/dev/null | grep -q "Failed to connect to Hive" || \
+        tail -n 4 "$LOG_FILE" 2>/dev/null | grep -q "Another instance is already running" || \
+        tail -n 4 "$LOG_FILE" 2>/dev/null | grep -q "\"message\": \"Internal server error\"" || \
+        tail -n 4 "$LOG_FILE" 2>/dev/null | grep -q "thread 'main' panicked") && \
        [ $((current_time - LAST_RESTART)) -gt $MIN_RESTART_INTERVAL ]; then
         echo "$(date): 检测到连接问题，正在重启服务..." >> "$HOME/monitor.log"
         
-        # 先发送 Ctrl+C
-        screen -S "$SCREEN_NAME" -X stuff $'\003'
-        sleep 5
-        
-        # 执行 aios-cli kill
-        screen -S "$SCREEN_NAME" -X stuff "aios-cli kill\n"
-        sleep 5
+        # 检查screen会话是否存在
+        if screen -ls | grep -q "$SCREEN_NAME"; then
+            # 先发送 Ctrl+C
+            screen -S "$SCREEN_NAME" -X stuff $'\003'
+            sleep 5
+            
+            # 执行 aios-cli kill
+            screen -S "$SCREEN_NAME" -X stuff "aios-cli kill\n"
+            sleep 5
+        fi
         
         echo "$(date): 清理旧日志..." > "$LOG_FILE"
         
@@ -453,19 +480,36 @@ LAST_POINTS=0
 MIN_RESTART_INTERVAL=300
 
 while true; do
-    CURRENT_POINTS=\$($AIOS_PATH hive points | grep -o '[0-9]\+' | head -1)
+    # 检查aios-cli是否可用
+    if [ ! -f "\$AIOS_PATH" ]; then
+        echo "\$(date): aios-cli 不可用，等待重试..." >> "\$HOME/points_monitor.log"
+        sleep 300
+        continue
+    fi
+    
+    CURRENT_POINTS=\$(\$AIOS_PATH hive points 2>/dev/null | grep -o '[0-9]\+' | head -1)
+    
+    # 检查是否获取到积分
+    if [ -z "\$CURRENT_POINTS" ]; then
+        echo "\$(date): 无法获取积分信息，等待重试..." >> "\$HOME/points_monitor.log"
+        sleep 300
+        continue
+    fi
     
     if [ "\$CURRENT_POINTS" -eq "\$LAST_POINTS" ] && [ "\$CURRENT_POINTS" -gt 0 ]; then
         echo "\$(date): 积分没有增加，正在重启服务..." >> "\$HOME/points_monitor.log"
         
-        # 重启服务
-        screen -S "\$SCREEN_NAME" -X stuff \$'\003'
-        sleep 5
-        screen -S "\$SCREEN_NAME" -X stuff "\$AIOS_PATH kill\n"
-        sleep 5
-        
-        echo "\$(date): 清理旧日志..." > "\$LOG_FILE"
-        screen -S "\$SCREEN_NAME" -X stuff "\$AIOS_PATH start --connect >> \$LOG_FILE 2>&1\n"
+        # 检查screen会话是否存在
+        if screen -ls | grep -q "\$SCREEN_NAME"; then
+            # 重启服务
+            screen -S "\$SCREEN_NAME" -X stuff \$'\003'
+            sleep 5
+            screen -S "\$SCREEN_NAME" -X stuff "\$AIOS_PATH kill\n"
+            sleep 5
+            
+            echo "\$(date): 清理旧日志..." > "\$LOG_FILE"
+            screen -S "\$SCREEN_NAME" -X stuff "\$AIOS_PATH start --connect >> \$LOG_FILE 2>&1\n"
+        fi
         
         LAST_POINTS=\$CURRENT_POINTS
     else
