@@ -19,7 +19,7 @@
 
 ```bash
 # 在WSL中下载脚本
-wget -O hyper.sh https://raw.githubusercontent.com/your-repo/hyper.sh
+wget -O hyper.sh https://raw.githubusercontent.com/Horizen5/Web3/refs/heads/main/hyper.sh
 chmod +x hyper.sh
 ```
 
